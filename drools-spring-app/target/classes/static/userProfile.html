@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+	<title>Drools demo</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+	<script src="js	/userProfile.js"></script>
+
+
+	<h2 id="welcome" style="text-align: center;  margin:auto;margin-top:1%;">Welcome !</h2>
+	<p id="category" style="text-align: center;  margin:auto;margin-top:1%;">Category: </p>
+	<p id="coupons" style="text-align: center;  margin:auto;margin-top:1%;">Coupons: </p>
+	
+	
+	<h3 style="text-align: center;  margin:auto;margin-top:10%;margin-bottom:-3%">Search</h3>
+	<div style="text-align: center;  margin:auto;margin-top:5%;">
+		 <p>From - Until</p>
+		 <input type="date" id="startSearch">
+		 <input type="date" id="endSearch">
+		 <br>
+		 <br>
+		 <select id="cities" style="margin-top: 1%; width:15%" class="browser-default custom-select">
+		  <option value="x" selected>Select city</option>
+		</select>
+		<br><br>
+		 <button type="submit" onclick="search()" class="btn btn-primary">SEARCH</button>
+		
+	</div>
+	
+	<h3 style="text-align: center;  margin:auto;margin-top:5%; margin-bottom:-3%">Reservations made</h3>
+	<div style="text-align: center;  margin:auto;margin-top:5%;" id="reservationList">
+		
+	</div>
+	
+	
+	
+	
+	<h3 style="text-align: center;  margin:auto;margin-top:10%;margin-bottom:-3%">Reserve now</h3>
+	<div style="text-align: center;  margin:auto;margin-top:5%;">
+		 <p>From - Until</p>
+		 <input type="date" id="start">
+		 <input type="date" id="end">
+		 <br>
+		 <br>
+		 <p>Number of persons:</p>		 
+		 <input type="number" id="numOfPersons">
+		 <br>
+		 <br>
+		 <select id="accommodations" style="margin-top: 1%; width:15%" class="browser-default custom-select">
+		  <option value="x" selected>Select accommodation</option>
+		</select>
+		<br><br>
+		 <button type="submit" onclick="reserve()" class="btn btn-primary">RESERVE</button>
+		
+	</div>
+	
+	<h3 style="text-align: center;  margin:auto; margin-top:10%; margin-bottom:-3%">Send message to an accommodation</h3>
+	<div style="text-align: center;  margin:auto;margin-top:5%;">
+	
+		<select id="accommodationsMessages" style="margin-top: 1%; width:15%" class="browser-default custom-select">
+		  <option value="x" selected>Select accommodation</option>
+		</select>
+		<br>
+		<br>
+		<textarea id="message" rows="4" cols="50"> </textarea>
+		<br>
+		<button type="submit" onclick="sendMessage()" class="btn btn-primary">SEND</button>
+	</div>
+	
+	
+	
+		<h3 style="text-align: center;  margin:auto; margin-top:10%; margin-bottom:-3%">Define a new rule</h3>
+	<div style="text-align: center;  margin:auto;margin-top:5%;">
+		<br>
+		<textarea id="rule" rows="15" cols="75"> </textarea>
+		<br>
+		<button type="submit" onclick="defineRule()" class="btn btn-primary">DEFINE</button>
+	</div>
+	
+	
+	
+	
+	
+	<h3 style="text-align: center;  margin:auto;margin-top:10%;margin-bottom:-3%">Recommended places</h3>
+	<div id="recommended" style="text-align: center;  margin:auto;margin-top:5%;">
+	
+	</div>
+	
+
+</body>
+</html>

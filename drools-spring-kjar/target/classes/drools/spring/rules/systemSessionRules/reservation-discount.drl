@@ -1,0 +1,203 @@
+package model
+
+import model.Reservation
+import model.ReservationState
+import model.Relation
+import java.util.ArrayList
+import model.BlockDiscountStatus
+import model.Accommodation
+import java.util.concurrent.TimeUnit
+import java.util.Date
+import model.Query
+
+declare Reservation
+	@role(event)
+end
+
+declare Query
+	@role(event)
+end
+
+
+// u listu windowa se dodaje tek kada se zavrsi pravilo!!!
+
+rule "50% discount for last minute"	
+	
+	//agenda-group "canclleAndReserve"
+	lock-on-active
+	when
+		$r: Reservation(this.isForToday()==true, state == ReservationState.OFFER_DISCOUNT, accommodation.blockDiscountStatus != BlockDiscountStatus.LAST_MINUTE)
+		
+	then
+		modify($r){setDiscount(50);}
+		System.out.println("DISCOUNT TRIGGERED: Discount for last minute 50%.\n");	
+end 
+
+rule "25% dicount for early birds"
+	
+	//agenda-group "canclleAndReserve"
+	lock-on-active
+	when
+		$r: Reservation(this.aboveOrBelowDayThreshold(90,Relation.OVER)==true, state == ReservationState.OFFER_DISCOUNT) 
+	then
+		modify($r){setDiscount(25);}
+		System.out.println("DISCOUNT TRIGGERED: Discount for early birds 25%.\n");	
+end
+
+
+rule "Discount for regulars"
+	salience -1
+	//agenda-group "canclleAndReserve"
+	lock-on-active
+	when
+		$r: Reservation(state == ReservationState.OFFER_DISCOUNT)
+		$list: ArrayList() from collect(Reservation(userId == $r.getUserId(), state == ReservationState.FINISHED, accommodation.id == $r.getAccommodation().getId())) 
+		eval($list.size() >= $r.getAccommodation().getRegular())
+	then
+		modify($r){setDiscount($r.getDiscount() + $r.getAccommodation().getRegularDiscount());}
+		System.out.println("DISCOUNT TRIGGERED: Discount for regulars.\n");
+end
+
+
+
+
+
+rule "60% on unrated accommodation for users that have been to this location 6 times at 3 different agets"
+	salience -5
+	lock-on-active
+	when
+		$r: Reservation(state == ReservationState.OFFER_DISCOUNT)
+		$visitList: ArrayList()
+						from collect(Reservation(state == ReservationState.FINISHED,
+													userId == $r.getUserId(),
+													accommodation.location.city.id == $r.getAccommodation().getLocation().getCity().getId(),
+													accommodation.location.city.country.id == $r.getAccommodation().getLocation().getCity().getCountry().getId()))						
+		$numberOfDifferentAgents: Integer()
+								from accumulate($res: Reservation(
+								state == ReservationState.FINISHED,
+								userId == $r.getUserId(),
+								accommodation.location.city.id == $r.getAccommodation().getLocation().getCity().getId(),
+								accommodation.location.city.country.id == $r.getAccommodation().getLocation().getCity().getCountry().getId()),
+								
+								init(Set<Long> agents = new HashSet<Long>();),
+								
+								action(agents.add($res.getAccommodation().getAgentId());),
+								
+								result(agents.size())
+								);
+		
+		$ratingList: ArrayList()
+					from collect(Reservation(state == ReservationState.FINISHED, accommodation.id == $r.getAccommodation().getId(), rating != null))
+							
+		eval($visitList.size() >= 6 && $numberOfDifferentAgents >= 3 && $ratingList.size() == 0)
+									  
+	then
+		int temp = $r.getDiscount();
+		if(temp > 40)
+		{
+			temp = 100;
+		}
+		else
+		{
+			temp = temp + 60;
+		}
+		
+		System.out.println("DISCOUNT TRIGGERED: 6 times on the location with 3 unique agents, 60%.\n");	
+		modify($r){setDiscount($r.getDiscount());}
+		
+			
+end
+
+
+rule "30 search queries in 3 minutes and no reservation in 4 days causes 30% discount"
+	salience -7
+	lock-on-active 
+	when
+		$r: Reservation(state == ReservationState.OFFER_DISCOUNT)
+		$queryList: ArrayList() from collect(Query(cityId == $r.getAccommodation().getLocation().getCity().getId(), fromDate.compareTo($r.getStartDate())==0, untilDate.compareTo($r.getEndDate())==0) over window:time(3m) )
+		
+		$reservationListSize: ArrayList() from collect(Reservation(state == ReservationState.ACTIVE, accommodation.location.city.id == $r.getAccommodation().getLocation().getCity().getId(), isInPeriod($r.getStartDate(), $r.getEndDate()) == true) over window:time(96h))		
+		eval($queryList.size() >= 10 && $reservationListSize.size() == 0)
+	then
+		System.out.println("DISCOUNT TRIGGERED: 30 search queries in 3 minutes and no reservation in 4 days causes 30% discount.\n");	
+		int temp = $r.getDiscount();
+		if(temp > 70)
+		{
+			temp = 100;
+		}
+		else
+		{
+			temp = temp + 30;
+		}
+		
+		modify($r){setDiscount(temp);}
+end
+
+
+
+rule "calculate price"
+
+
+	//agenda-group "canclleAndReserve"
+	salience -10
+	lock-on-active
+	
+	when
+		$r: Reservation(state == ReservationState.OFFER_DISCOUNT)
+		
+	then
+	
+	
+		long days = TimeUnit.DAYS.convert($r.getEndDate().getTime() - $r.getStartDate().getTime(), TimeUnit.MILLISECONDS);
+		double extraChargePrecentage = 1;
+		double discountPrecentage = (100-(double)$r.getDiscount())/100;
+	
+		
+		if($r.getNumberOfPersons() > $r.getAccommodation().getCapacity())
+		{
+			double difference = $r.getNumberOfPersons() - $r.getAccommodation().getCapacity();
+			extraChargePrecentage = (100+(difference * (double)$r.getAccommodation().getExtraPersonPrecentage()))/100;
+		}
+		
+		System.out.println("RESERVATION INFO: days: " + days + "; price: " + $r.getAccommodation().getPrice() + "; discount: " + $r.getDiscount() + "; extra: " + extraChargePrecentage + "\n");
+		
+		modify($r){setPrice(days * $r.getAccommodation().getPrice() * discountPrecentage * extraChargePrecentage)}
+		
+		modify($r){setState(ReservationState.ACTIVE);}
+end
+
+
+rule "block last minute"
+	
+	//agenda-group "canclleAndReserve"
+	no-loop
+	salience -15
+	
+	when
+			$r: Reservation(this.isForToday()==true, state == ReservationState.ACTIVE)
+			$list: ArrayList() from collect (Reservation(accommodation.id == $r.getAccommodation().getId(),state == ReservationState.ACTIVE, discount == 50) over window:time(30m)) 
+			eval($list.size() >= 5)
+	then
+			modify($r.getAccommodation()){setBlockDiscountStatus(BlockDiscountStatus.LAST_MINUTE);}
+			System.out.println("Blokada last minute. " + $list.size() + "\n");
+
+end
+
+
+
+
+rule "block early bird"
+	
+	//agenda-group "canclleAndReserve"
+	no-loop
+	salience -15
+	
+	when
+			$r:  Reservation(this.aboveOrBelowDayThreshold(90,Relation.OVER)==true, state == ReservationState.ACTIVE)
+				$list: ArrayList() from collect (Reservation(accommodation.id == $r.getAccommodation().getId(),state == ReservationState.ACTIVE, discount == 25) over window:time(90s)) 
+			eval($list.size() >= 15)
+	then
+			modify($r.getAccommodation()){setBlockDiscountStatus(BlockDiscountStatus.EARLY_BIRD);}
+			System.out.println("Blokada eary brid. " + $list.size() + "\n");
+
+end

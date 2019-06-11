@@ -1,0 +1,17 @@
+package model
+
+import model.User;
+import java.util.List;
+import model.Accommodation;
+import java.util.ArrayList;
+global User user;
+global ArrayList<Accommodation> list;
+
+rule "Reccomend accommodation under a distance threshold"
+	when
+		$list: ArrayList() from collect(Accommodation(location.distanceFromCity <= user.getAverageCityDistance(), category >= user.category, user.doesContainIntersection(amenities) == true))
+	then
+		System.out.println("MAX DISTANCE FOR RECOMMENDATION: " + user.getAverageCityDistance());
+		System.out.println("MUST HAVE AMENITIES: " + user.getAmenities().toString());
+		drools.getKnowledgeRuntime().setGlobal("list",$list);
+end

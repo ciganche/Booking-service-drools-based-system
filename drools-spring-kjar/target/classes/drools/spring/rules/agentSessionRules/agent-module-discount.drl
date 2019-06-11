@@ -1,0 +1,35 @@
+package model
+
+import model.Accommodation;
+import model.Reservation;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.concurrent.TimeUnit
+import model.Agent;
+import model.Message;
+import model.Location;
+import model.City;
+
+
+rule "suggest discount"
+	agenda-group "notify"
+	when
+		$agent: Agent()
+		$now : Date()
+		$list: ArrayList() from collect(Reservation(accommodation.getId() == $agent.getAccommodation().getId(), startDate.getTime() <= $now.getTime(), endDate.getTime() >= $now.getTime()))
+		accumulate(Accommodation(location.city.id ==  $agent.getAccommodation().getLocation().getCity().getId(), 
+								 location.city.country.id == $agent.getAccommodation().getLocation().getCity().getCountry().getId(),
+								 id != $agent.getAccommodation().getId(),
+								 ratingAvg >= $agent.getAccommodation().getRatingAvg() - 1,
+		 						 ratingAvg <= $agent.getAccommodation().getRatingAvg() + 1,
+		 						 category == $agent.getAccommodation().getCategory(),
+								 $price : price);
+								 $avg : average($price);
+								 $list.size() == 0);
+			
+	then
+		int averageDiscount = (int) ( ( ($avg / $agent.getAccommodation().getPrice())  ) * 100);
+		$agent.getInbox().add(new Message("SUGGESTION: Local average is " + averageDiscount + "% of your price."));
+		
+
+end

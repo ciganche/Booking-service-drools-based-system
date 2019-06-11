@@ -1,0 +1,12 @@
+package model
+
+import model.Accommodation
+
+rule "test"
+	
+	when
+		eval(1 == 1)
+	then
+		System.out.println("Tu sam.");
+		
+end

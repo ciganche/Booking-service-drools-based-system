@@ -1,0 +1,45 @@
+package model
+
+import model.Accommodation;
+import model.Reservation;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.concurrent.TimeUnit
+import model.Agent;
+import model.Message;
+
+global String spam
+
+rule "suggest a lower price"
+	
+	agenda-group "notify"
+	no-loop
+	when
+		$agent: Agent()
+		$now : Date()
+		$list: ArrayList() from collect(Reservation(accommodation.id == $agent.getAccommodation().getId(),  TimeUnit.DAYS.convert($now.getTime() - startDate.getTime(), TimeUnit.MILLISECONDS) <= 15))
+		
+		accumulate(Accommodation(location.city.id ==  $agent.getAccommodation().getLocation().getCity().getId(), 
+								 location.city.country.id == $agent.getAccommodation().getLocation().getCity().getCountry().getId(),
+								 id != $agent.getAccommodation().getId(),
+								 ratingAvg >= $agent.getAccommodation().getRatingAvg() - 1,
+		 						 ratingAvg <= $agent.getAccommodation().getRatingAvg() + 1,
+		 						 category == $agent.getAccommodation().getCategory(),
+								 $price : price);
+								 $avg : average($price);
+								$agent.getAccommodation().getPrice() > $avg, $list.size() == 0); //these two conditions
+
+	then
+		$agent.getInbox().add(new Message("SUGGESTION: There have been no reservations in the past 15 days and the price is above the average for this location. Think about lowering the price."));
+end
+
+
+rule "decline message"
+	agenda-group "notify"
+	no-loop
+	when
+		$message : Message(text contains spam)
+	then	
+		modify($message){setText("SPAM: ................................................................");}
+		
+end

@@ -1,0 +1,17 @@
+package model
+
+import model.Reservation
+import model.ReservationState
+import java.util.Date
+
+rule "Set reservation as finished"
+	
+	when
+		$now: Date()
+		$r : Reservation($now.getTime() >= endDate.getTime(), state == ReservationState.ACTIVE)
+	then
+		System.out.println("finishirao");
+		Rating r = new Rating(0,0,null);
+		modify($r){setState(ReservationState.FINISHED);}
+		modify($r){setRating(r);}
+end

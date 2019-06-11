@@ -1,0 +1,84 @@
+package model
+
+import model.Accommodation
+import model.Comment
+
+import model.Category
+import model.Rating
+import model.Reservation
+import model.ReservationState
+import java.util.concurrent.TimeUnit
+import java.util.Date
+import java.util.List
+
+
+rule "Bronze accommodation"
+	
+	salience 3
+	lock-on-active true	
+	when
+		$a: Accommodation(ratingAvg <= 2)
+	then
+		modify($a){setCategory(Category.BRONZE);}
+		System.out.println($a.getName() + ": boom - bronze");
+		
+end
+
+rule "Silver accommodation"
+
+	salience 2
+	lock-on-active true
+	when
+		$a: Accommodation(ratingAvg > 2)
+		$time: Date()
+		$reservation_list: List() from collect(Reservation( accommodation.id == $a.id, TimeUnit.DAYS.convert($time.getTime() - startDate.getTime(), TimeUnit.MILLISECONDS) <= 90  )   )
+		eval($reservation_list.size() >= 3)
+	then
+		modify($a){setCategory(Category.SILVER);}
+		System.out.println($a.getName() + ":boom - silver");
+			
+end
+
+
+rule "Gold accommodation"
+	
+	salience 1
+	lock-on-active true
+	when
+		$a: Accommodation(ratingAvg > 3)
+		$time: Date()
+		$reservation_list: List() from collect(Reservation( accommodation.id == $a.id, TimeUnit.DAYS.convert($time.getTime() - startDate.getTime(), TimeUnit.MILLISECONDS) <= 30, rating.value >= 4, state == ReservationState.FINISHED  )   )
+		eval($reservation_list.size() >= 2)
+		
+		
+	 	$latestReservation: Reservation(accommodation.id == $a.id, $latestDate: endDate, rating.value >= 3, state == ReservationState.FINISHED)
+	 	not Reservation(state == ReservationState.FINISHED, endDate > $latestDate)
+	 		 	
+	then
+		modify($a){setCategory(Category.GOLD);}
+		System.out.println($a.getName() + ": boom - gold");
+			
+end
+
+rule "Platinum accommodation"
+	
+	salience 0
+	no-loop
+	when
+		$today: Date()
+		$a: Accommodation(ratingAvg > 3, category == Category.GOLD)
+		$sum: Double() from accumulate(Reservation($price: price, accommodation.id == $a.id, state == ReservationState.FINISHED,
+		TimeUnit.DAYS.convert($today.getTime() - endDate.getTime(), TimeUnit.MILLISECONDS) <= 90),sum($price))
+
+		eval($sum >= 1000)
+	
+	then
+		modify($a){setCategory(Category.PLATINUM);}
+		System.out.println($a.getName() + ": boom - platinum");
+	
+end
+
+
+
+
+	

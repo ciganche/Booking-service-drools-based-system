@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+	<title>Drools demo</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+	<script src="js	/agentProfile.js"></script>
+	
+	<h3 id="welcome" style="text-align: center;  margin:auto;margin-top:5%;margin-bottom:3%">Hello agent</h3>
+	
+
+	<h3 style="text-align: center;  margin:auto;margin-top:5%;margin-bottom:-3%">Set precentages</h3>
+	<div style="text-align: center;  margin:auto;margin-top:5%;">
+		 <p>Number of reservations to be an regular:</p>
+		 <input type="number" id="regularNumber">
+		 <br>
+		 <br>
+		 <p>Discount for regulars: in %</p>
+		 <input type="number" id="discount">
+		 <br>
+		 <br>
+		 <p>Charge for extra people: in %</p>
+		 <input type="number" id="extra">
+		 <br>
+		 <br>
+		 <p>Spam message identifier: </p>
+		 <input  id="spam">
+		 <br>
+		 <br>
+		 <button type="submit" onclick="set()" class="btn btn-primary">Change</button>
+		 
+	</div>
+	
+
+	<h3 style="text-align: center;  margin:auto;margin-top:10%;margin-bottom:-5%">Inform me when occupation hits 75% </h3>
+	<div style="text-align: center;  margin:auto;margin-top:5%;">
+		 <p>From - Until</p>
+		 <input type="date" id="start">
+		 <input type="date" id="end">
+		 <br>
+		 <br>
+		 <button type="submit" onclick="setPeriod()" class="btn btn-primary">SET</button>
+	</div>
+
+	<h3 id="welcome" style="text-align: center;  margin:auto;margin-top:10%;margin-bottom:-2%">Inbox</h3>
+	<ul style="text-align: left;margin-right:20%;margin-left:20%" id="inbox">
+		
+	</ul>
+
+</body>
+</html>

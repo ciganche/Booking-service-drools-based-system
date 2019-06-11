@@ -1,0 +1,54 @@
+package model
+
+import model.Reservation
+import model.ReservationState
+import model.Relation
+import java.util.ArrayList
+import model.BlockDiscountStatus
+import model.Agent
+import model.Message
+
+
+
+global Date startPeriod;
+global Date endPeriod;
+
+
+declare Reservation
+	@role(event)
+end
+
+
+rule "notify if 75% occupied"
+
+	agenda-group "periodRule"
+
+	when
+		$agent: Agent()
+		$totalList: ArrayList() from collect(Accommodation(location.city.id == $agent.getAccommodation().getLocation().getCity().getId(), location.city.country.id == $agent.getAccommodation().getLocation().getCity().getCountry().getId()))
+		$occupiedList: ArrayList() from collect(Reservation(accommodation.location.city.id == $agent.getAccommodation().getLocation().getCity().getId(),
+															accommodation.location.city.country.id == $agent.getAccommodation().getLocation().getCity().getCountry().getId(),
+															this.isInPeriod(startPeriod, endPeriod),
+															state == ReservationState.ACTIVE))
+		eval((((double)$occupiedList.size())/(double)$totalList.size())>= 0.75)
+	then
+		$agent.getInbox().add(new Message("WARRNING: In the selected period, on this location, more than 75% accommodation have been booked."));
+		System.out.println("obavestavam agenta vise 75%: " + ((double)$occupiedList.size()/(double)$totalList.size()));
+end
+
+
+
+rule "notify agent to raise price - 20 reservation in same location in 3h"
+	agenda-group "periodRule"
+	when	
+		
+		$agnt: Agent()
+		$list: ArrayList() from collect(Reservation(accommodation.location.city.id == $agnt.getAccommodation().getLocation().getCity().getId(), accommodation.location.city.country.id == $agnt.getAccommodation().getLocation().getCity().getCountry().getId(), this.isInPeriod(startPeriod, endPeriod)) over window:time(3h))
+
+		eval($list.size() >= 5)
+	then
+		$agnt.getInbox().add(new Message("SUGGESTION: Raise the price! There have been more than 20 reservation for this location in the last 3 hours in the selected period."));
+		System.out.println("obavestavam agenta 3 sata - 20 rezs");
+end
+
+

@@ -1,0 +1,75 @@
+package model
+
+import model.User
+import model.Category
+import model.Rating
+import model.Reservation
+import model.ReservationState
+import java.util.concurrent.TimeUnit
+import java.util.Date
+import java.util.List
+
+rule "Bronze user"
+	
+	salience 3
+	no-loop
+	when
+		$u: User(category == null)
+	then
+		modify($u){setCategory(Category.BRONZE);}
+		System.out.println("boom - bronze");
+		
+end
+
+
+rule "Silver user"
+
+	salience 2
+	lock-on-active
+	when
+		$today: Date()
+		$u: User()
+		$total: Double() from accumulate(Reservation($price: price, userId == $u.id, state == ReservationState.FINISHED),sum($price))
+		
+		$reservations: List() from collect (Reservation(userId == $u.id, state == ReservationState.FINISHED))
+		
+		eval( (TimeUnit.DAYS.convert($today.getTime() - $u.getRegistrationDate().getTime(), TimeUnit.MILLISECONDS) >= 180) || ($reservations.size() >= 2) )
+		eval($total >= 300)
+	then
+		modify($u){setCategory(Category.SILVER);}
+		System.out.println("User:" + $u.getName() + "boom - silver");
+end
+
+
+rule "Gold user"
+	
+	salience 1
+	no-loop
+	when
+		$u: User()
+		$reservations: List() from collect (Reservation(userId == $u.id, state == ReservationState.FINISHED))
+		
+		eval($reservations.size() >= 10)
+		exists(Reservation(state == ReservationState.FINISHED, userId == $u.id, accommodation.category >= Category.GOLD))
+	then
+		modify($u){setCategory(Category.GOLD);}
+		modify($u){setCoupons($u.getCoupons()+1);}
+		System.out.println("User:" + $u.getName() + "boom - gold");
+end
+
+
+rule "Platinum user"
+	
+	salience 0
+	no-loop
+	when
+		$today: Date()
+		$u: User()
+		$total: Double() from accumulate(  Reservation($price: price, userId == $u.id, state == ReservationState.FINISHED, TimeUnit.DAYS.convert($today.getTime() - endDate.getTime(), TimeUnit.MILLISECONDS) <= 365),sum($price))
+		
+		eval($total >= 2000)
+	then
+		modify($u){setCategory(Category.PLATINUM);}
+		modify($u){setCoupons($u.getCoupons()+1);}
+		System.out.println("User:" + $u.getName() + "boom - platinum");
+end

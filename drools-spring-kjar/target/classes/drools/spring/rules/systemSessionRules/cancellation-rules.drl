@@ -1,0 +1,133 @@
+package model
+
+import model.Accommodation
+import model.Reservation
+import java.util.concurrent.TimeUnit
+import java.util.Date
+import model.Reservation
+import model.Relation
+import model.ReservationState
+import java.util.Calendar
+import org.apache.commons.lang3.time.DateUtils
+import java.util.Set
+import java.util.HashSet
+
+
+declare Reservation
+	@role(event)
+end
+
+rule "Cancellation 3 or less days before the start is 50%"
+
+	salience -4
+	lock-on-active
+	when   
+		$reservation: Reservation(state == ReservationState.TO_BE_CANCELLED, aboveOrBelowDayThreshold(3, Relation.UNDER) == true)
+	then
+		modify($reservation){setCancellationPrecentage(50);}
+		System.out.print("CANCELLATION PRECENGATE: 3 of less days, 50%.\n");
+		
+end
+
+
+
+
+rule "Cancellation 4 - 29 days with reservations before and after is 55%"
+	
+	salience -5
+	lock-on-active
+	when
+		$reservation: Reservation(state == ReservationState.TO_BE_CANCELLED, aboveOrBelowDayThreshold(4, Relation.OVER) == true, aboveOrBelowDayThreshold(29, Relation.UNDER) == true, $start: DateUtils.truncate(startDate, Calendar.DAY_OF_MONTH), $end: DateUtils.truncate(endDate, Calendar.DAY_OF_MONTH), $acc: accommodation)
+		exists(Reservation(this!=$reservation, DateUtils.truncate(startDate, Calendar.DAY_OF_MONTH) == $end, state == ReservationState.ACTIVE, accommodation == $acc)) 
+		exists(Reservation(this!=$reservation, DateUtils.truncate(endDate, Calendar.DAY_OF_MONTH) == $start, state == ReservationState.ACTIVE, accommodation == $acc))
+	then
+		modify($reservation){setCancellationPrecentage(55);}
+		System.out.print("CANCELLATION PRECENGATE: 4 - 29 days with reservation before and after, 55%.\n");
+end
+
+
+
+rule "Cancellation 4-29 days before is 30%"
+	
+	salience -3
+	lock-on-active
+	when
+		$reservation: Reservation(state == ReservationState.TO_BE_CANCELLED, aboveOrBelowDayThreshold(4, Relation.OVER) == true, aboveOrBelowDayThreshold(29, Relation.UNDER) == true)
+		
+	then
+		modify($reservation){setCancellationPrecentage(30);}
+		System.out.print("CANCELLATION PRECENGATE: 4 - 29 days, 30%.\n");
+
+end
+
+
+
+rule "Cancellation 30 days before is free"
+	
+	salience 0
+	lock-on-active
+	when
+		$reservation: Reservation(state == ReservationState.TO_BE_CANCELLED, aboveOrBelowDayThreshold(30, Relation.OVER) == true)
+		
+	then
+		modify($reservation){setCancellationPrecentage(0);}
+		System.out.print("CANCELLATION PRECENGATE: 30 days before , 0%.\n");
+
+end
+
+
+
+rule "For every successful year 25%"
+
+	salience(-$successfulYeas*2)
+	lock-on-active
+	when
+			$reservationToCancell: Reservation(state == ReservationState.TO_BE_CANCELLED)
+			$successfulYeas: Integer()
+							from accumulate($res: Reservation(state == ReservationState.FINISHED, accommodation == $reservationToCancell.accommodation),
+							init(Set<Integer> godine = new HashSet<Integer>();),
+							action(godine.add($res.getEndDate().getYear());),
+							result(godine.size())
+							);
+	then
+			modify($reservationToCancell){setCancellationPrecentage($successfulYeas * 25);}
+			System.out.print("CANCELLATION PRECENGATE: for every successful year accommodation charges " + $successfulYeas * 25 + "%.\n");
+			
+end
+
+//give disocunt 
+rule "if cancelled within 10 minutes upon reservation, give 40% discount on cancellation."
+	salience -99
+	lock-on-active
+	when																			//10m
+		$r: (Reservation(state == ReservationState.TO_BE_CANCELLED) over window:time(20s))
+	then
+		System.out.print("CANCELLATION PRECENGATE: Cancelled within 10 minutes upon reservation, give 40% discount on cancellation.\n");
+		int temp = $r.getCancellationPrecentage();
+		if(temp > 40)
+		{
+			temp = temp - 40;
+		}
+		else
+		{
+			temp = 0;
+		}
+		modify($r){setCancellationPrecentage(temp);}
+		
+end
+
+
+//last to be executed
+rule "Set as Cancelled after the discount price has been calculated"
+	
+	salience -100
+	no-loop
+	when:
+		$reservation: Reservation(state == ReservationState.TO_BE_CANCELLED)
+	then
+		
+		modify($reservation){setState(ReservationState.CANCELLED);}
+		
+end
+
+
